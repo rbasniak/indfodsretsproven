@@ -19,4 +19,4 @@ document.addEventListener('click',e=>{const b=e.target.closest('.speak');if(b)sp
 document.querySelectorAll('[name=tts]').forEach(r=>{r.checked=r.value===prefs.mode;r.onchange=()=>{prefs.mode=r.value;localStorage.ttsMode=r.value;stopAll()}});
 $('#rate').value=prefs.rate;$('#rateOut').textContent=prefs.rate.toFixed(1)+'×';$('#rate').oninput=e=>{prefs.rate=parseFloat(e.target.value);localStorage.ttsRate=prefs.rate;$('#rateOut').textContent=prefs.rate.toFixed(1)+'×'};
 $('#voice').onchange=e=>{prefs.voice=e.target.value;localStorage.ttsVoice=prefs.voice};speechSynthesis.onvoiceschanged=loadVoices;loadVoices();
-</script></body></html>
+</script><script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script><script src="assets/firebase-client.js"></script><script src="assets/custom-words.js"></script></body></html>
