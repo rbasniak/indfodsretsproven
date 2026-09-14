@@ -7,6 +7,7 @@
     selectionButton: null,
     overlay: null,
     overlayWordId: null,
+    hideTimer: null,
     currentAudio: null,
   };
 
@@ -253,6 +254,10 @@
   }
 
   function showOverlay(mark) {
+    if (state.hideTimer) {
+      window.clearTimeout(state.hideTimer);
+      state.hideTimer = null;
+    }
     hideOverlay();
     const item = state.words.find(word => word.id === mark.dataset.wordId);
     if (!item) return;
@@ -272,6 +277,13 @@
       event.stopPropagation();
       playTts(item.term);
     });
+    overlay.addEventListener('mouseenter', () => {
+      if (state.hideTimer) {
+        window.clearTimeout(state.hideTimer);
+        state.hideTimer = null;
+      }
+    });
+    overlay.addEventListener('mouseleave', scheduleHideOverlay);
     overlay.append(term, meaning, audio);
     document.body.appendChild(overlay);
     state.overlay = overlay;
@@ -282,9 +294,18 @@
   }
 
   function hideOverlay() {
+    if (state.hideTimer) {
+      window.clearTimeout(state.hideTimer);
+      state.hideTimer = null;
+    }
     state.overlay?.remove();
     state.overlay = null;
     state.overlayWordId = null;
+  }
+
+  function scheduleHideOverlay() {
+    if (state.hideTimer) window.clearTimeout(state.hideTimer);
+    state.hideTimer = window.setTimeout(hideOverlay, 180);
   }
 
   function playTts(text) {
@@ -315,6 +336,14 @@
   function bindInteractions() {
     document.addEventListener('mouseup', () => window.setTimeout(showSelectionButton, 0));
     document.addEventListener('touchend', () => window.setTimeout(showSelectionButton, 0));
+    document.addEventListener('mouseover', event => {
+      const mark = event.target.closest('.study-word');
+      if (mark && !mark.contains(event.relatedTarget)) showOverlay(mark);
+    });
+    document.addEventListener('mouseout', event => {
+      const mark = event.target.closest('.study-word');
+      if (mark && !mark.contains(event.relatedTarget)) scheduleHideOverlay();
+    });
     document.addEventListener('click', event => {
       const mark = event.target.closest('.study-word');
       if (mark) {
