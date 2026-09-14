@@ -78,10 +78,35 @@
       cursor: pointer;
       font: inherit;
     }
+    .study-overlay-actions {
+      display: flex;
+      gap: .4rem;
+      margin-top: .55rem;
+    }
+    .study-overlay-edit,
+    .study-overlay-delete {
+      border: 0;
+      border-radius: 999px;
+      padding: .25rem .55rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .study-overlay-edit {
+      background: #f5eee6;
+      color: #8c2430;
+    }
+    .study-overlay-delete {
+      background: #f9e4e4;
+      color: #a32929;
+    }
   `;
 
   function escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function normalizeText(value) {
+    return String(value).replace(/\s+/g, ' ').trim();
   }
 
   function injectStyles() {
@@ -173,21 +198,23 @@
       return;
     }
 
-    const meaning = window.prompt(`Informe o significado de:\n\n${term}`);
-    if (!meaning || !meaning.trim()) return;
+    const savedTerm = normalizeText(term);
+    const meaning = window.prompt(`Informe o significado de:\n\n${savedTerm}`);
+    const savedMeaning = meaning ? normalizeText(meaning) : '';
+    if (!savedTerm || !savedMeaning) return;
 
     try {
       const ref = window.studyFirebase.db
         .collection('users').doc(state.user.uid).collection('customWords').doc();
       await ref.set({
-        term,
-        meaning: meaning.trim(),
+        term: savedTerm,
+        meaning: savedMeaning,
         sourceUrl: window.location.href,
         sourceTitle: document.title,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      state.words.push({ id: ref.id, term, meaning: meaning.trim() });
+      state.words.push({ id: ref.id, term: savedTerm, meaning: savedMeaning });
       applyHighlights();
       alert('Salvo para estudar no ov-dansk.');
     } catch (error) {
@@ -277,6 +304,24 @@
       event.stopPropagation();
       playTts(item.term);
     });
+    const actions = document.createElement('div');
+    actions.className = 'study-overlay-actions';
+    const edit = document.createElement('button');
+    edit.className = 'study-overlay-edit';
+    edit.type = 'button';
+    edit.textContent = 'Editar definição';
+    edit.addEventListener('click', event => {
+      event.stopPropagation();
+      editMeaning(item, meaning);
+    });
+    const remove = document.createElement('button');
+    remove.className = 'study-overlay-delete';
+    remove.type = 'button';
+    remove.textContent = 'Excluir';
+    remove.addEventListener('click', event => {
+      event.stopPropagation();
+      deleteWord(item);
+    });
     overlay.addEventListener('mouseenter', () => {
       if (state.hideTimer) {
         window.clearTimeout(state.hideTimer);
@@ -284,7 +329,8 @@
       }
     });
     overlay.addEventListener('mouseleave', scheduleHideOverlay);
-    overlay.append(term, meaning, audio);
+    actions.append(edit, remove);
+    overlay.append(term, meaning, audio, actions);
     document.body.appendChild(overlay);
     state.overlay = overlay;
     state.overlayWordId = item.id;
@@ -306,6 +352,43 @@
   function scheduleHideOverlay() {
     if (state.hideTimer) window.clearTimeout(state.hideTimer);
     state.hideTimer = window.setTimeout(hideOverlay, 180);
+  }
+
+  async function editMeaning(item, meaningElement) {
+    const value = window.prompt(`Edite o significado de:\n\n${item.term}`, item.meaning);
+    const meaning = value ? normalizeText(value) : '';
+    if (!meaning || meaning === item.meaning) return;
+    try {
+      await window.studyFirebase.db.collection('users').doc(state.user.uid)
+        .collection('customWords').doc(item.id)
+        .update({
+          meaning,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      item.meaning = meaning;
+      meaningElement.textContent = meaning;
+      applyHighlights();
+    } catch (error) {
+      console.error('Update custom word error:', error);
+      alert('Não foi possível atualizar a definição.');
+    }
+  }
+
+  async function deleteWord(item) {
+    if (!window.confirm(`Excluir "${item.term}" das palavras salvas?`)) return;
+    try {
+      const userRef = window.studyFirebase.db.collection('users').doc(state.user.uid);
+      await Promise.all([
+        userRef.collection('customWords').doc(item.id).delete(),
+        userRef.collection('progress').doc(`custom_${item.id}`).delete(),
+      ]);
+      state.words = state.words.filter(word => word.id !== item.id);
+      hideOverlay();
+      applyHighlights();
+    } catch (error) {
+      console.error('Delete custom word error:', error);
+      alert('Não foi possível excluir esta palavra ou frase.');
+    }
   }
 
   function playTts(text) {
