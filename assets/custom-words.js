@@ -8,6 +8,7 @@
     overlay: null,
     overlayWordId: null,
     hideTimer: null,
+    toastTimer: null,
     currentAudio: null,
   };
 
@@ -99,6 +100,27 @@
       background: #f9e4e4;
       color: #a32929;
     }
+    .study-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 1003;
+      max-width: calc(100vw - 32px);
+      padding: .7rem 1rem;
+      border-radius: 999px;
+      background: #342722;
+      color: #fffdfa;
+      box-shadow: 0 8px 24px rgba(45,32,24,.24);
+      transform: translate(-50%, 12px);
+      opacity: 0;
+      transition: opacity .18s ease, transform .18s ease;
+      font: 600 .85rem system-ui, sans-serif;
+      pointer-events: none;
+    }
+    .study-toast.visible {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
   `;
 
   function escapeRegExp(value) {
@@ -107,6 +129,21 @@
 
   function normalizeText(value) {
     return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  function showToast(message) {
+    let toast = document.querySelector('.study-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.className = 'study-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+    if (state.toastTimer) window.clearTimeout(state.toastTimer);
+    state.toastTimer = window.setTimeout(() => {
+      toast.classList.remove('visible');
+    }, 2600);
   }
 
   function injectStyles() {
@@ -216,7 +253,7 @@
       });
       state.words.push({ id: ref.id, term: savedTerm, meaning: savedMeaning });
       applyHighlights();
-      alert('Salvo para estudar no ov-dansk.');
+      showToast('Salvo para estudar no ov-dansk.');
     } catch (error) {
       console.error('Save custom word error:', error);
       alert('Não foi possível salvar esta palavra ou frase.');
