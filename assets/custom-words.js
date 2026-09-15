@@ -9,6 +9,7 @@
     overlayWordId: null,
     hideTimer: null,
     toastTimer: null,
+    selectionTimer: null,
     currentAudio: null,
   };
 
@@ -41,6 +42,13 @@
       box-shadow: 0 5px 18px rgba(0,0,0,.22);
       font: 600 .78rem system-ui, sans-serif;
       cursor: pointer;
+    }
+    .study-selection-button--touch {
+      left: 50% !important;
+      top: auto !important;
+      bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+      transform: translateX(-50%);
+      white-space: nowrap;
     }
     .study-word {
       background: rgba(202,165,107,.32);
@@ -213,9 +221,15 @@
     button.className = 'study-selection-button';
     button.type = 'button';
     button.textContent = state.user ? 'Salvar para estudar' : 'Entrar para salvar';
-    button.style.left = `${Math.max(10, Math.min(rect.left, window.innerWidth - 180))}px`;
-    button.style.top = `${Math.max(10, rect.top - 46)}px`;
+    const touchDevice = window.matchMedia('(pointer: coarse)').matches;
+    if (touchDevice) {
+      button.classList.add('study-selection-button--touch');
+    } else {
+      button.style.left = `${Math.max(10, Math.min(rect.left, window.innerWidth - 180))}px`;
+      button.style.top = `${Math.max(10, rect.top - 46)}px`;
+    }
     button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('pointerdown', event => event.preventDefault());
     button.addEventListener('click', () => saveSelection(text));
     document.body.appendChild(button);
     state.selectionButton = button;
@@ -454,8 +468,13 @@
   }
 
   function bindInteractions() {
-    document.addEventListener('mouseup', () => window.setTimeout(showSelectionButton, 0));
-    document.addEventListener('touchend', () => window.setTimeout(showSelectionButton, 0));
+    const scheduleSelectionButton = () => {
+      if (state.selectionTimer) window.clearTimeout(state.selectionTimer);
+      state.selectionTimer = window.setTimeout(showSelectionButton, 80);
+    };
+    document.addEventListener('selectionchange', scheduleSelectionButton);
+    document.addEventListener('mouseup', scheduleSelectionButton);
+    document.addEventListener('touchend', scheduleSelectionButton);
     document.addEventListener('mouseover', event => {
       const mark = event.target.closest('.study-word');
       if (mark && !mark.contains(event.relatedTarget)) showOverlay(mark);
